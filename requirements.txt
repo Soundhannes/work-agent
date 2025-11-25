@@ -1,0 +1,10 @@
+# Core
+psycopg2-binary    # PostgreSQL
+anthropic          # Claude API
+
+# API (spaeter)
+# fastapi
+# uvicorn
+
+# Tests
+pytest

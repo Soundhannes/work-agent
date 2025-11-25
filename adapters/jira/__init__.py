@@ -1,0 +1,1 @@
+# Jira Adapter - REST API
