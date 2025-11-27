@@ -1,1 +1,0 @@
-# Email Adapter - IMAP/SMTP

@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Benutzer - Work Agent</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="top-section no-padding-top">
+        <div class="header-bar">
+            <h1 id="header-title">Work Agent</h1>
+        </div>
+        <div id="user-list"></div>
+    </div>
+
+    <div class="bottom-section">
+        <div id="user-form" class="user-form">
+            <div class="form-row">
+                <input type="text" id="first_name" placeholder="Vorname">
+                <input type="text" id="last_name" placeholder="Nachname">
+            </div>
+            <div class="form-row">
+                <input type="email" id="email" placeholder="E-Mail">
+                <select id="role">
+                    <option value="user">User</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <input type="password" id="password" placeholder="Passwort">
+                <input type="password" id="password_confirm" placeholder="Passwort bestätigen">
+            </div>
+            <div class="password-hint">Min. 8 Zeichen, Groß- und Kleinbuchstaben, Zahl und Sonderzeichen</div>
+            <div class="form-row">
+                <button id="save-btn" onclick="saveUser()">Speichern</button>
+                <button id="cancel-btn" onclick="cancelEdit()" style="display:none">Abbrechen</button>
+                <button id="delete-btn" onclick="deleteUser()" style="display:none">Löschen</button>
+                <button onclick="goBack()">Zurück</button>
+            </div>
+            <div id="error" class="error"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let selectedUserId = null;
+        let isAdmin = false;
+        let usersData = {};
+
+        async function init() {
+            const res = await fetch('/api/me');
+            if (!res.ok) {
+                window.location.href = '/login';
+                return;
+            }
+            currentUser = await res.json();
+            isAdmin = currentUser.role === 'admin';
+
+            updateHeader();
+
+            if (isAdmin) {
+                loadUsers();
+            } else {
+                // User sieht nur sich selbst - direkt laden
+                document.getElementById('user-list').style.display = 'none';
+                document.getElementById('email').style.display = 'none';
+                document.getElementById('role').style.display = 'none';
+                selectUser(currentUser.user_id);
+            }
+        }
+
+        function updateHeader() {
+            document.getElementById('header-title').innerHTML =
+                '_' + currentUser.first_name + ' ' + currentUser.last_name + ' / Work Agent <span class="page-name">/ Benutzer</span>';
+        }
+
+        async function loadUsers() {
+            const res = await fetch('/api/users');
+            const users = await res.json();
+            const list = document.getElementById('user-list');
+
+            if (users.length === 0) {
+                list.innerHTML = '<div class="empty">Keine Benutzer</div>';
+                return;
+            }
+
+            usersData = {};
+            let html = '';
+            users.forEach(u => {
+                usersData[u.id] = u;
+                const selected = u.id === selectedUserId ? ' selected' : '';
+                const roleText = u.role === 'admin' ? ' (Admin)' : '';
+                const firstName = u.first_name || '';
+                const lastName = u.last_name || '';
+                html += '<div class="process-row' + selected + '" onclick="selectUser(' + u.id + ')">' +
+                    '<span class="title">' + firstName + ' ' + lastName + roleText + '</span>' +
+                '</div>';
+            });
+            list.innerHTML = html;
+        }
+
+        async function selectUser(id) {
+            // Für normalen User: Daten laden
+            if (!isAdmin) {
+                const res = await fetch('/api/users');
+                const users = await res.json();
+                if (users.length > 0) {
+                    usersData[users[0].id] = users[0];
+                    id = users[0].id;
+                }
+            }
+
+            if (selectedUserId === id && isAdmin) {
+                cancelEdit();
+                return;
+            }
+
+            const u = usersData[id];
+            if (!u) return;
+
+            selectedUserId = id;
+            document.getElementById('first_name').value = u.first_name || '';
+            document.getElementById('last_name').value = u.last_name || '';
+            document.getElementById('email').value = u.username || '';
+            document.getElementById('role').value = u.role || 'user';
+            document.getElementById('password').value = '';
+            document.getElementById('password_confirm').value = '';
+
+            if (isAdmin) {
+                document.getElementById('email').disabled = true;
+                document.getElementById('cancel-btn').style.display = 'inline';
+
+                if (id !== currentUser.user_id) {
+                    document.getElementById('delete-btn').style.display = 'inline';
+                }
+
+                updateSelection();
+            }
+        }
+
+        function updateSelection() {
+            document.querySelectorAll('#user-list .process-row').forEach((row, index) => {
+                row.classList.remove('selected');
+            });
+            if (selectedUserId && usersData[selectedUserId]) {
+                const ids = Object.keys(usersData).map(Number);
+                const index = ids.indexOf(selectedUserId);
+                const rows = document.querySelectorAll('#user-list .process-row');
+                if (rows[index]) rows[index].classList.add('selected');
+            }
+        }
+
+        function cancelEdit() {
+            selectedUserId = null;
+            document.getElementById('first_name').value = '';
+            document.getElementById('last_name').value = '';
+            document.getElementById('email').value = '';
+            document.getElementById('email').disabled = false;
+            document.getElementById('role').value = 'user';
+            document.getElementById('password').value = '';
+            document.getElementById('password_confirm').value = '';
+            document.getElementById('cancel-btn').style.display = 'none';
+            document.getElementById('delete-btn').style.display = 'none';
+            document.getElementById('error').textContent = '';
+            updateSelection();
+        }
+
+        async function saveUser() {
+            const firstName = document.getElementById('first_name').value.trim();
+            const lastName = document.getElementById('last_name').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const role = document.getElementById('role').value;
+            const password = document.getElementById('password').value;
+            const passwordConfirm = document.getElementById('password_confirm').value;
+            const error = document.getElementById('error');
+
+            if (!firstName || !lastName) {
+                error.textContent = 'Vor- und Nachname erforderlich';
+                return;
+            }
+
+            try {
+                let res;
+                if (selectedUserId) {
+                    // Update existing user
+                    const data = {first_name: firstName, last_name: lastName};
+                    if (isAdmin) data.role = role;
+                    if (password) {
+                        data.password = password;
+                        data.password_confirm = passwordConfirm;
+                    }
+
+                    res = await fetch('/api/users/' + selectedUserId, {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(data)
+                    });
+                } else {
+                    // Create new user (admin only)
+                    if (!isAdmin) {
+                        error.textContent = 'Nur Admin kann neue Benutzer anlegen';
+                        return;
+                    }
+                    if (!email || !password) {
+                        error.textContent = 'E-Mail und Passwort erforderlich';
+                        return;
+                    }
+
+                    res = await fetch('/api/users', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            email, password, password_confirm: passwordConfirm,
+                            first_name: firstName, last_name: lastName, role
+                        })
+                    });
+                }
+
+                if (res.ok) {
+                    error.textContent = 'Gespeichert';
+                    error.style.color = '#3a3';
+                    if (isAdmin) {
+                        cancelEdit();
+                        loadUsers();
+                    }
+                    setTimeout(() => {
+                        error.textContent = '';
+                        error.style.color = '#a33';
+                    }, 2000);
+                } else {
+                    const err = await res.json();
+                    error.textContent = err.detail || 'Fehler beim Speichern';
+                }
+            } catch (err) {
+                error.textContent = 'Verbindungsfehler';
+            }
+        }
+
+        async function deleteUser() {
+            if (!selectedUserId || !confirm('Benutzer wirklich löschen?')) return;
+
+            try {
+                const res = await fetch('/api/users/' + selectedUserId, {method: 'DELETE'});
+                if (res.ok) {
+                    cancelEdit();
+                    loadUsers();
+                } else {
+                    const err = await res.json();
+                    document.getElementById('error').textContent = err.detail || 'Fehler beim Löschen';
+                }
+            } catch (err) {
+                document.getElementById('error').textContent = 'Verbindungsfehler';
+            }
+        }
+
+        function goBack() {
+            window.location.href = '/';
+        }
+
+        init();
+    </script>
+</body>
+</html>

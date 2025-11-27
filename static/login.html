@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Work Agent</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="login-container">
+        <h1>Work Agent</h1>
+        <form id="login-form">
+            <input type="email" id="email" placeholder="E-Mail" autofocus>
+            <input type="password" id="password" placeholder="Passwort">
+            <button type="submit">Login</button>
+            <div id="error" class="error"></div>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('login-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const error = document.getElementById('error');
+
+            try {
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({email, password})
+                });
+
+                if (res.ok) {
+                    window.location.href = '/';
+                } else {
+                    error.textContent = 'Falscher Benutzername oder Passwort';
+                }
+            } catch (err) {
+                error.textContent = 'Verbindungsfehler';
+            }
+        });
+    </script>
+</body>
+</html>

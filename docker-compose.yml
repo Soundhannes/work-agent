@@ -1,0 +1,18 @@
+services:
+  work-agent:
+    build: .
+    container_name: work-agent
+    restart: unless-stopped
+    networks:
+      - traefik
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.workagent.rule=Host(`workagent.weshould.de`)
+      - traefik.http.routers.workagent.entrypoints=https
+      - traefik.http.routers.workagent.tls=true
+      - traefik.http.routers.workagent.tls.certresolver=cloudflare
+      - traefik.http.services.workagent.loadbalancer.server.port=8000
+
+networks:
+  traefik:
+    external: true

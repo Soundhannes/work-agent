@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login-Log - Work Agent</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="full-section no-padding-top">
+        <div class="header-bar">
+            <h1 id="header-title">Work Agent</h1>
+        </div>
+        <div id="log-list"></div>
+        <div style="margin-top:1rem"><button onclick="goBack()">Zurück</button></div>
+    </div>
+
+    <script>
+        let currentUser = null;
+
+        async function init() {
+            const res = await fetch('/api/me');
+            if (!res.ok) {
+                window.location.href = '/login';
+                return;
+            }
+            currentUser = await res.json();
+            if (currentUser.role !== 'admin') {
+                window.location.href = '/';
+                return;
+            }
+            updateHeader();
+            loadLog();
+        }
+
+        function updateHeader() {
+            document.getElementById('header-title').innerHTML =
+                '_' + currentUser.first_name + ' ' + currentUser.last_name + ' / Work Agent <span class="page-name">/ Login-Log</span>';
+        }
+
+        async function loadLog() {
+            const res = await fetch('/api/login-log');
+            const logs = await res.json();
+            const list = document.getElementById('log-list');
+
+            if (logs.length === 0) {
+                list.innerHTML = '<div class="empty">Keine Einträge</div>';
+                return;
+            }
+
+            let html = '<table class="log-table"><thead><tr>' +
+                '<th>Zeitpunkt</th><th>E-Mail</th><th>Name</th><th>Aktion</th><th>Status</th><th>IP</th>' +
+                '</tr></thead><tbody>';
+
+            logs.forEach(l => {
+                const date = new Date(l.created_at).toLocaleString('de-DE');
+                const name = l.first_name && l.last_name ? l.first_name + ' ' + l.last_name : '-';
+                const status = l.success ? 'OK' : 'Fehlgeschlagen';
+                const statusClass = l.success ? 'success' : 'failed';
+                html += '<tr>' +
+                    '<td>' + date + '</td>' +
+                    '<td>' + l.email + '</td>' +
+                    '<td>' + name + '</td>' +
+                    '<td>' + l.action + '</td>' +
+                    '<td class="' + statusClass + '">' + status + '</td>' +
+                    '<td>' + (l.ip_address || '-') + '</td>' +
+                '</tr>';
+            });
+
+            html += '</tbody></table>';
+            list.innerHTML = html;
+        }
+
+        function goBack() {
+            window.location.href = '/';
+        }
+
+        init();
+    </script>
+</body>
+</html>
