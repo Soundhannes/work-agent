@@ -23,13 +23,12 @@ Prozess-Management-Tool für Arbeitsabläufe.
 - **Auth**: Session-basiert mit bcrypt
 - **Deployment**: Docker + Traefik
 
-## Server-Pfade
+## Projektstruktur
 
 ```
-/opt/work-agent/
+work-agent/
 ├── main.py              # FastAPI App
-├── index.html           # Dashboard (root)
-├── style.css            # Styles (root)
+├── requirements.txt
 ├── static/
 │   ├── index.html       # Dashboard
 │   ├── login.html       # Login-Seite
@@ -38,7 +37,7 @@ Prozess-Management-Tool für Arbeitsabläufe.
 │   └── style.css        # Styles
 ├── Dockerfile
 ├── docker-compose.yml
-└── requirements.txt
+└── README.md
 ```
 
 ## Deployment
